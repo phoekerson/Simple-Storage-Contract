@@ -1,66 +1,37 @@
-use starknet::contract;
-use starknet::storage;
-use starknet::interface;
-
+// Import necessary Starknet modules
 #[starknet::contract]
-mod bookstore {
-    use super::*;
+mod student_contract {
+    use starknet::storage;
 
-    #[storage]
-    struct Storage {
-        books: Map<felt252, Book>,
+    
+    struct State {
+        name: felt, 
+        age: felt,  
     }
 
-    #[derive(Drop, starknet::Storage)]
-    struct Book {
-        title: felt252,
-        author: felt252,
-        description: felt252,
-        price: u16,
-        quantity: u8,
+    
+    #[constructor]
+    fn constructor() -> State {
+        State {
+            name: 20, 
+            age: 20,
+        }
     }
 
+    
     #[external]
-    fn add_book(
-        ref self: ContractState,
-        title: felt252,
-        author: felt252,
-        description: felt252,
-        price: u16,
-        quantity: u8,
+    fn update_student_data(
+        &mut self,
+        new_name: felt, 
+        new_age: felt,  
     ) {
-        self.books.write(title, Book { title, author, description, price, quantity });
+        self.name = new_name; 
+        self.age = new_age;   
     }
 
-    #[external]
-    fn update_book(
-        ref self: ContractState,
-        title: felt252,
-        new_price: u16,
-        new_quantity: u8,
-    ) {
-        let mut book = self.books.read(title).unwrap();
-        book.price = new_price;
-        book.quantity = new_quantity;
-        self.books.write(title, book);
-    }
-
-    #[external]
-    fn remove_book(ref self: ContractState, title: felt252) {
-        self.books.remove(title);
-    }
-}
-
-#[starknet::contract]
-mod purchase {
-    use super::*;
-    use bookstore::bookstore;
-
-    #[external]
-    fn buy_book(ref self: ContractState, bookstore_address: ContractAddress, title: felt252) {
-        let mut book = bookstore::get_book(bookstore_address, title);
-        assert!(book.quantity > 0, "Out of stock");
-        book.quantity -= 1;
-        bookstore::update_book(bookstore_address, title, book.price, book.quantity);
+   
+    #[view]
+    fn get_student_data(&self) -> (felt, felt) {
+        (self.name, self.age) 
     }
 }
