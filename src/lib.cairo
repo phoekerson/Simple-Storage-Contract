@@ -1,37 +1,66 @@
-// Import necessary Starknet modules
+use starknet::contract;
+use starknet::storage;
+use starknet::interface;
+
 #[starknet::contract]
-mod student_contract {
-    use starknet::storage;
+mod bookstore {
+    use super::*;
 
-    
-    struct State {
-        name: felt, 
-        age: felt,  
+    #[storage]
+    struct Storage {
+        books: Map<felt252, Book>,
     }
 
-    
-    #[constructor]
-    fn constructor() -> State {
-        State {
-            name: 20, 
-            age: 20,
-        }
+    #[derive(Drop, starknet::Storage)]
+    struct Book {
+        title: felt252,
+        author: felt252,
+        description: felt252,
+        price: u16,
+        quantity: u8,
     }
 
-    
     #[external]
-    fn update_student_data(
-        &mut self,
-        new_name: felt, 
-        new_age: felt,  
+    fn add_book(
+        ref self: ContractState,
+        title: felt252,
+        author: felt252,
+        description: felt252,
+        price: u16,
+        quantity: u8,
     ) {
-        self.name = new_name; 
-        self.age = new_age;   
+        self.books.write(title, Book { title, author, description, price, quantity });
     }
 
-   
-    #[view]
-    fn get_student_data(&self) -> (felt, felt) {
-        (self.name, self.age) 
+    #[external]
+    fn update_book(
+        ref self: ContractState,
+        title: felt252,
+        new_price: u16,
+        new_quantity: u8,
+    ) {
+        let mut book = self.books.read(title).unwrap();
+        book.price = new_price;
+        book.quantity = new_quantity;
+        self.books.write(title, book);
+    }
+
+    #[external]
+    fn remove_book(ref self: ContractState, title: felt252) {
+        self.books.remove(title);
+    }
+}
+
+#[starknet::contract]
+mod purchase {
+    use super::*;
+    use bookstore::bookstore;
+
+    #[external]
+    fn buy_book(ref self: ContractState, bookstore_address: ContractAddress, title: felt252) {
+        let mut book = bookstore::get_book(bookstore_address, title);
+        assert!(book.quantity > 0, "Out of stock");
+        book.quantity -= 1;
+        bookstore::update_book(bookstore_address, title, book.price, book.quantity);
     }
 }
